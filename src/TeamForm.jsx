@@ -30,7 +30,7 @@ export default function TeamForm({ teams, onAddTeam, onRemoveTeam, onGenerate })
   return (
     <div className="setup-panel">
       <div className="setup-header">
-        <h1>Rocket League Tournament Bracket</h1>
+        <h1>Azfura RL World Cup</h1>
         <p className="setup-sub">
           Add every roster, set each player's rank, then generate the bracket.
           Seeding is calculated from each team's average rank.
