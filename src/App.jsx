@@ -103,7 +103,7 @@ export default function App() {
           />
           {teams.length > 0 && (
             <div className="reset-row">
-              <button className="btn-text-danger" onClick={handleStartOver}>
+              <button className="btn-reset" onClick={handleStartOver}>
                 Reset everything
               </button>
             </div>
