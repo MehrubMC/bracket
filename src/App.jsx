@@ -1,9 +1,9 @@
-// App.js
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { Bracket } from "react-brackets";
 import TeamForm from "./TeamForm";
 import MatchCard from "./MatchCard";
 import { generateBracket, advanceWinner } from "./bracketUtils";
+import { loadState, saveState, clearState } from "./persistence";
 import "./App.css";
 
 function roundTitle(index, totalRounds) {
@@ -28,10 +28,19 @@ function toBracketFormat(rounds) {
   }));
 }
 
+// Load once, synchronously, before first render - avoids a flash of the
+// empty setup screen when a saved bracket already exists.
+const saved = loadState();
+
 export default function App() {
-  const [teams, setTeams] = useState([]);
-  const [rounds, setRounds] = useState(null); // internal round/match tree
-  const [stage, setStage] = useState("setup"); // 'setup' | 'bracket'
+  const [teams, setTeams] = useState(saved?.teams || []);
+  const [rounds, setRounds] = useState(saved?.rounds || null);
+  const [stage, setStage] = useState(saved?.stage || "setup");
+
+  // Whenever any of these change, persist the whole state to localStorage.
+  useEffect(() => {
+    saveState({ teams, rounds, stage });
+  }, [teams, rounds, stage]);
 
   const handleAddTeam = useCallback((team) => {
     setTeams((prev) => [...prev, team]);
@@ -49,6 +58,17 @@ export default function App() {
   const handleReset = useCallback(() => {
     setRounds(null);
     setStage("setup");
+  }, []);
+
+  // Full wipe: clears teams, bracket, and the saved localStorage entry.
+  const handleStartOver = useCallback(() => {
+    if (!window.confirm("Reset everything? This clears all teams and the current bracket.")) {
+      return;
+    }
+    setTeams([]);
+    setRounds(null);
+    setStage("setup");
+    clearState();
   }, []);
 
   // Click-to-advance: fires when a team is clicked inside a MatchCard.
@@ -74,12 +94,21 @@ export default function App() {
       <div className="bg-glow" aria-hidden="true" />
 
       {stage === "setup" && (
-        <TeamForm
-          teams={teams}
-          onAddTeam={handleAddTeam}
-          onRemoveTeam={handleRemoveTeam}
-          onGenerate={handleGenerate}
-        />
+        <>
+          <TeamForm
+            teams={teams}
+            onAddTeam={handleAddTeam}
+            onRemoveTeam={handleRemoveTeam}
+            onGenerate={handleGenerate}
+          />
+          {teams.length > 0 && (
+            <div className="reset-row">
+              <button className="btn-text-danger" onClick={handleStartOver}>
+                Reset everything
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {stage === "bracket" && bracketData && (
@@ -91,9 +120,14 @@ export default function App() {
                 Click a team in any match to advance them to the next round.
               </p>
             </div>
-            <button className="btn btn-secondary" onClick={handleReset}>
-              ← Edit Teams
-            </button>
+            <div className="bracket-topbar-actions">
+              <button className="btn btn-secondary" onClick={handleReset}>
+                ← Edit Teams
+              </button>
+              <button className="btn-text-danger" onClick={handleStartOver}>
+                Reset everything
+              </button>
+            </div>
           </div>
 
           {champion && (
