@@ -124,9 +124,9 @@ export default function App() {
               <button className="btn btn-secondary" onClick={handleReset}>
                 ← Edit Teams
               </button>
-              <button className="btn-text-danger" onClick={handleStartOver}>
-                Reset everything
-              </button>
+              <button className="btn-reset" onClick={handleStartOver}>
+  Reset everything
+</button>
             </div>
           </div>
 
