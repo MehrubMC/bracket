@@ -4,8 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-  "build": "node node_modules/vite/bin/vite.js build"
-},
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
     "react": "^18.2.0",
     "react-brackets": "^0.4.7",

@@ -5,12 +5,12 @@
 import React from "react";
 import { Seed, SeedItem } from "react-brackets";
 
-export default function MatchCard({ seed, roundIndex, seedIndex, onSelectWinner }) {
+export default function MatchCard({ seed, roundIndex, seedIndex, onSelectWinner, readOnly }) {
   const [teamA, teamB] = seed.teams;
   const winnerId = seed.winnerId;
 
   const canClick = (team) =>
-    team && !team.isBye && teamA && teamB && !teamA.isBye && !teamB.isBye;
+    !readOnly && team && !team.isBye && teamA && teamB && !teamA.isBye && !teamB.isBye;
 
   return (
     <Seed className="rl-seed" mobileBreakpoint={seed.mobileBreakpoint}>

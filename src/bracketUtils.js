@@ -175,3 +175,70 @@ export function advanceWinner(rounds, roundIdx, matchIdx, winner) {
 }
 
 export { BYE };
+
+/**
+ * Derives the third-place match from the semifinal round (rounds[len-2]).
+ * The "loser" of each semifinal is whichever team in that match is not the
+ * winner. If a semifinal was decided by a BYE, there's no real loser to
+ * place here, so that slot stays empty. Returns null if the bracket is too
+ * small to have a semifinal round (i.e. only 2 teams / a single final).
+ */
+export function computeBronzeMatch(rounds) {
+  if (!rounds || rounds.length < 2) return null;
+  const semis = rounds[rounds.length - 2];
+  if (semis.length !== 2) return null; // only defined for a standard single bracket
+
+  const loserOf = (match) => {
+    if (!match.winner || !match.teamA || !match.teamB) return null;
+    const loser = match.winner.id === match.teamA.id ? match.teamB : match.teamA;
+    return loser.isBye ? null : loser;
+  };
+
+  return { id: "bronze-match", teamA: loserOf(semis[0]), teamB: loserOf(semis[1]) };
+}
+
+function pickBySeed(a, b) {
+  if (!a) return b || null;
+  if (!b) return a;
+  if (a.isBye) return b;
+  if (b.isBye) return a;
+  return a.seed <= b.seed ? a : b;
+}
+
+/**
+ * Builds a fully-resolved "chalk" bracket - every match decided purely by
+ * comparing seed numbers, ignoring whatever winners have actually been
+ * clicked so far. Round 0's teamA/teamB pairings never change after
+ * generateBracket() runs, so they're a safe, stable starting point to
+ * project forward from. Used by the "Projected" toggle.
+ */
+export function projectBySeed(rounds) {
+  const projected = rounds.map((round) => round.map((m) => ({ ...m })));
+
+  projected[0] = projected[0].map((m) => ({ ...m, winner: pickBySeed(m.teamA, m.teamB) }));
+
+  for (let r = 1; r < projected.length; r++) {
+    projected[r] = projected[r].map((m, i) => {
+      const teamA = projected[r - 1][2 * i].winner;
+      const teamB = projected[r - 1][2 * i + 1].winner;
+      return { ...m, teamA, teamB, winner: pickBySeed(teamA, teamB) };
+    });
+  }
+
+  const bronze = (() => {
+    if (projected.length < 2) return null;
+    const semis = projected[projected.length - 2];
+    if (semis.length !== 2) return null;
+    const loserOf = (match) => {
+      if (!match.teamA || !match.teamB) return null;
+      const winner = pickBySeed(match.teamA, match.teamB);
+      const loser = winner.id === match.teamA.id ? match.teamB : match.teamA;
+      return loser.isBye ? null : loser;
+    };
+    const teamA = loserOf(semis[0]);
+    const teamB = loserOf(semis[1]);
+    return { id: "bronze-match", teamA, teamB, winner: pickBySeed(teamA, teamB) };
+  })();
+
+  return { rounds: projected, bronze };
+}

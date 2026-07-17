@@ -1,8 +1,15 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+// App.js
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { Bracket } from "react-brackets";
 import TeamForm from "./TeamForm";
 import MatchCard from "./MatchCard";
-import { generateBracket, advanceWinner } from "./bracketUtils";
+import PodiumModal from "./PodiumModal";
+import {
+  generateBracket,
+  advanceWinner,
+  computeBronzeMatch,
+  projectBySeed,
+} from "./bracketUtils";
 import { loadState, saveState, clearState } from "./persistence";
 import "./App.css";
 
@@ -36,11 +43,14 @@ export default function App() {
   const [teams, setTeams] = useState(saved?.teams || []);
   const [rounds, setRounds] = useState(saved?.rounds || null);
   const [stage, setStage] = useState(saved?.stage || "setup");
+  const [bronzeWinnerId, setBronzeWinnerId] = useState(saved?.bronzeWinnerId || null);
+  const [projected, setProjected] = useState(saved?.projected || false);
+  const [showPodium, setShowPodium] = useState(false);
 
   // Whenever any of these change, persist the whole state to localStorage.
   useEffect(() => {
-    saveState({ teams, rounds, stage });
-  }, [teams, rounds, stage]);
+    saveState({ teams, rounds, stage, bronzeWinnerId, projected });
+  }, [teams, rounds, stage, bronzeWinnerId, projected]);
 
   const handleAddTeam = useCallback((team) => {
     setTeams((prev) => [...prev, team]);
@@ -52,11 +62,15 @@ export default function App() {
 
   const handleGenerate = useCallback(() => {
     setRounds(generateBracket(teams));
+    setBronzeWinnerId(null);
+    setProjected(false);
+    setShowPodium(false);
     setStage("bracket");
   }, [teams]);
 
   const handleReset = useCallback(() => {
     setRounds(null);
+    setShowPodium(false);
     setStage("setup");
   }, []);
 
@@ -67,6 +81,9 @@ export default function App() {
     }
     setTeams([]);
     setRounds(null);
+    setBronzeWinnerId(null);
+    setProjected(false);
+    setShowPodium(false);
     setStage("setup");
     clearState();
   }, []);
@@ -78,16 +95,75 @@ export default function App() {
     setRounds((prev) => advanceWinner(prev, roundIdx, matchIdx, winner));
   }, []);
 
+  const handleSelectBronzeWinner = useCallback((_roundIdx, _matchIdx, team) => {
+    setBronzeWinnerId(team.id);
+  }, []);
+
+  // The real (manually-clicked) bronze match, derived from the semifinal
+  // losers. If the underlying semifinal results change, a previously
+  // stored bronzeWinnerId that no longer matches either team is simply
+  // ignored below rather than needing an explicit reset.
+  const realBronzeMatch = useMemo(() => (rounds ? computeBronzeMatch(rounds) : null), [rounds]);
+
+  const realBronzeWinner = useMemo(() => {
+    if (!realBronzeMatch || !bronzeWinnerId) return null;
+    if (realBronzeMatch.teamA?.id === bronzeWinnerId) return realBronzeMatch.teamA;
+    if (realBronzeMatch.teamB?.id === bronzeWinnerId) return realBronzeMatch.teamB;
+    return null;
+  }, [realBronzeMatch, bronzeWinnerId]);
+
+  // The fully seed-projected version of everything, used when "Projected"
+  // is checked. Round 0's pairings are fixed at generation time, so this
+  // is always safe to compute from the live rounds state.
+  const projectedResult = useMemo(
+    () => (rounds && projected ? projectBySeed(rounds) : null),
+    [rounds, projected]
+  );
+
+  const displayRounds = projected && projectedResult ? projectedResult.rounds : rounds;
+  const bronzeMatch = projected && projectedResult ? projectedResult.bronze : realBronzeMatch;
+
+  const bronzeWinner = useMemo(() => {
+    if (projected) return bronzeMatch?.winner || null;
+    return realBronzeWinner;
+  }, [projected, bronzeMatch, realBronzeWinner]);
+
   const bracketData = useMemo(
-    () => (rounds ? toBracketFormat(rounds) : null),
-    [rounds]
+    () => (displayRounds ? toBracketFormat(displayRounds) : null),
+    [displayRounds]
   );
 
   const champion = useMemo(() => {
-    if (!rounds) return null;
-    const finalMatch = rounds[rounds.length - 1][0];
+    if (!displayRounds) return null;
+    const finalMatch = displayRounds[displayRounds.length - 1][0];
     return finalMatch.winner || null;
-  }, [rounds]);
+  }, [displayRounds]);
+
+  // --- Real (non-projected) completion state, drives the podium popup ---
+  const realFinalMatch = rounds ? rounds[rounds.length - 1][0] : null;
+  const realChampion = realFinalMatch?.winner || null;
+  const realRunnerUp = useMemo(() => {
+    if (!realFinalMatch || !realFinalMatch.winner) return null;
+    const { teamA, teamB, winner } = realFinalMatch;
+    if (!teamA || !teamB) return null;
+    return winner.id === teamA.id ? teamB : teamA;
+  }, [realFinalMatch]);
+  const bronzeNeeded = !!(realBronzeMatch && realBronzeMatch.teamA && realBronzeMatch.teamB);
+  const isComplete = !!realChampion && (!bronzeNeeded || !!realBronzeWinner);
+
+  // Pop the podium open the moment the bracket transitions into "complete"
+  // (not on every render, and not just because a saved bracket that was
+  // already finished got reloaded from localStorage).
+  const wasCompleteRef = useRef(isComplete);
+  useEffect(() => {
+    if (isComplete && !wasCompleteRef.current) {
+      setShowPodium(true);
+    }
+    if (!isComplete) {
+      setShowPodium(false);
+    }
+    wasCompleteRef.current = isComplete;
+  }, [isComplete]);
 
   return (
     <div className="app-shell">
@@ -117,40 +193,85 @@ export default function App() {
             <div>
               <h1>Tournament Bracket</h1>
               <p className="setup-sub">
-                Click a team in any match to advance them to the next round.
+                {projected
+                  ? "Showing a seed-based projection - uncheck to go back to your picks."
+                  : "Click a team in any match to advance them to the next round."}
               </p>
             </div>
             <div className="bracket-topbar-actions">
+              {isComplete && (
+                <button className="btn btn-secondary" onClick={() => setShowPodium(true)}>
+                  🏆 View Podium
+                </button>
+              )}
+              <label className="projected-toggle">
+                <input
+                  type="checkbox"
+                  checked={projected}
+                  onChange={(e) => setProjected(e.target.checked)}
+                />
+                Projected
+              </label>
               <button className="btn btn-secondary" onClick={handleReset}>
                 ← Edit Teams
               </button>
               <button className="btn-reset" onClick={handleStartOver}>
-  Reset everything
-</button>
+                Reset everything
+              </button>
             </div>
           </div>
 
           {champion && (
             <div className="champion-banner">
-              <span className="champion-label">Champion</span>
+              <span className="champion-label">
+                {projected ? "Projected Champion" : "Champion"}
+              </span>
               <span className="champion-name">{champion.name}</span>
             </div>
           )}
 
           <div className="bracket-scroll">
-            <Bracket
-              rounds={bracketData}
-              renderSeedComponent={(props) => (
-                <MatchCard {...props} onSelectWinner={handleSelectWinner} />
+            <div className="bracket-with-bronze">
+              <Bracket
+                rounds={bracketData}
+                renderSeedComponent={(props) => (
+                  <MatchCard {...props} onSelectWinner={handleSelectWinner} readOnly={projected} />
+                )}
+                roundTitleComponent={(title) => (
+                  <div className="round-title">{title}</div>
+                )}
+                roundClassName="rl-round"
+                bracketClassName="rl-bracket-container"
+                mobileBreakpoint={0}
+              />
+
+              {bronzeMatch && (bronzeMatch.teamA || bronzeMatch.teamB) && (
+                <div className="bronze-wrap">
+                  <div className="round-title">Third Place</div>
+                  <MatchCard
+                    seed={{
+                      id: bronzeMatch.id,
+                      winnerId: bronzeWinner ? bronzeWinner.id : null,
+                      teams: [bronzeMatch.teamA, bronzeMatch.teamB],
+                    }}
+                    roundIndex={0}
+                    seedIndex={0}
+                    onSelectWinner={handleSelectBronzeWinner}
+                    readOnly={projected}
+                  />
+                </div>
               )}
-              roundTitleComponent={(title) => (
-                <div className="round-title">{title}</div>
-              )}
-              roundClassName="rl-round"
-              bracketClassName="rl-bracket-container"
-              mobileBreakpoint={0}
-            />
+            </div>
           </div>
+
+          {showPodium && realChampion && (
+            <PodiumModal
+              first={realChampion}
+              second={realRunnerUp}
+              third={bronzeNeeded ? realBronzeWinner : undefined}
+              onClose={() => setShowPodium(false)}
+            />
+          )}
         </div>
       )}
     </div>

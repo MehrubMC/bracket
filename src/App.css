@@ -356,6 +356,7 @@ h1 {
   margin: 14px 0 !important;
 }
 
+
 /* ---------- Match card (fully custom content inside SeedItem) ---------- */
 
 .match-card {
@@ -455,17 +456,6 @@ h1 {
   opacity: 0.4;
 }
 
-/* ---------- Responsive ---------- */
-
-@media (max-width: 640px) {
-  .rank-selects {
-    grid-template-columns: 1fr;
-  }
-  .bracket-topbar {
-    flex-direction: column;
-  }
-}
-
 .bracket-topbar-actions {
   display: flex;
   align-items: center;
@@ -500,4 +490,182 @@ h1 {
 
 .btn-reset:active {
   transform: translateY(1px);
+}
+
+.bracket-with-bronze {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 28px;
+}
+
+.bronze-wrap {
+  width: 260px;
+  padding: 0 8px;
+}
+
+.bronze-wrap .round-title {
+  padding-bottom: 14px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.projected-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.projected-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-blue);
+  cursor: pointer;
+}
+
+.podium-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 11, 0.78);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 24px;
+}
+
+.podium-card {
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  padding: 36px 40px 28px;
+  max-width: 560px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.podium-title {
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 22px;
+  margin: 0 0 32px;
+  background: linear-gradient(90deg, var(--accent-orange), var(--accent-blue));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.podium-stands {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.podium-stand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 140px;
+}
+
+.podium-team {
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  justify-content: flex-end;
+}
+
+.podium-team-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.podium-team-rank {
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.podium-block {
+  width: 100%;
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 10px;
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+}
+
+.podium-place-num {
+  font-size: 30px;
+  color: #0a0d12;
+}
+
+.podium-block-1 {
+  height: 120px;
+  background: linear-gradient(180deg, #ffd873, #d7a43a);
+  order: 2;
+}
+
+.podium-block-2 {
+  height: 88px;
+  background: linear-gradient(180deg, #d7dde4, #a7b0b8);
+}
+
+.podium-block-3 {
+  height: 64px;
+  background: linear-gradient(180deg, #e0a877, #b57a4e);
+}
+
+.podium-first {
+  order: 2;
+}
+
+.podium-second {
+  order: 1;
+}
+
+.podium-third {
+  order: 3;
+}
+
+.podium-close {
+  width: auto;
+  padding: 10px 24px;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 640px) {
+  .rank-selects {
+    grid-template-columns: 1fr;
+  }
+  .bracket-topbar {
+    flex-direction: column;
+  }
 }
